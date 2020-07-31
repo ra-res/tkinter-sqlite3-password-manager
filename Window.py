@@ -7,7 +7,7 @@ from mysql.connector import errorcode
 import random
 import string
 import SQLCon as sql
-
+import Password as p
 
 from secrets import connection_data
 
@@ -20,13 +20,7 @@ class Window():
         self.draw_widgets()
         self.random_password_size = 15
         self.dbcon = sql.SQLCon()
-        
-        #        # self.c.bind("<B1-Motion>", self.paint)
-        # self.c.bind("<ButtonRelease-1>", self.reset)
-        # self.conn = self.db_connect()        
-        # self.cursor = conn.cursor()
-
-
+        self.password = p.Password()
 
     def add_new_password_screen(self):
         self.c.destroy()
@@ -69,8 +63,16 @@ class Window():
         if account_information["password"] != account_information["password_verify"]:
             Label(self.c, text="Passwords Must Match!", bg=self.colour_err, font =("",15)).grid(row=6, column=1)
             return
-         
-        # print(tuple(account_information.values()))
+
+        _hash, _key = self.password.password_encrypt(account_information['password'])
+        commit_data = (account_information['website_name'], account_information['username'], _hash, _key)
+        result = self.dbcon.write_account(commit_data)
+        if result:
+            Label(self.c, text="Successfully entered account", bg=self.colour_err, font =("",15)).grid(row=7, column=1)
+        else:
+            Label(self.c, text="Error!", bg=self.colour_err, font =("",15)).grid(row=7, column=1)
+    
+
 
     def generate_random_password(self):
         configuration = string.ascii_letters
@@ -88,13 +90,12 @@ class Window():
         Label(self.c, text="Password    ", bg=self.colour_bg , font =("",15)).grid(row=0, column=2)
         # Label(self.c, text=str("_"*25), bg=self.colour_bg , font =("",15)).grid(row=1, column=0)
 
-        self.accounts = self.dbcon.show_account()
+        accounts = self.dbcon.show_account()
         # print(len(self.accounts))
-        for i in range(len(self.accounts)):
-            Label(self.c, text=self.accounts[i][1], bg=self.colour_bg , font =("",15)).grid(row=i+1, column=0)
-            Label(self.c, text=self.accounts[i][2], bg=self.colour_bg , font =("",15)).grid(row=i+1, column=1)
-            Label(self.c, text=self.accounts[i][3], bg=self.colour_bg , font =("",15)).grid(row=i+1, column=2)
-        self.dbcon.close_connection()    
+        for i in range(len(accounts)):
+            Label(self.c, text=accounts[i][1], bg=self.colour_bg , font =("",15)).grid(row=i+1, column=0)
+            Label(self.c, text=accounts[i][2], bg=self.colour_bg , font =("",15)).grid(row=i+1, column=1)
+            Label(self.c, text=self.password.password_decrypt(accounts[i][3], accounts[i][4]), bg=self.colour_bg , font =("",15)).grid(row=i+1, column=2)
         self.c.pack()
 
     def draw_widgets(self):
@@ -114,6 +115,6 @@ if __name__=='__main__':
     root = Tk()
     Window(root)
     root.title("Password Manager")  
-    root.geometry("500x500")
+    root.geometry("500x1000")
     root.resizable(width=False, height=False)
     root.mainloop()              
